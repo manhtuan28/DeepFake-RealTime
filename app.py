@@ -44,6 +44,11 @@ def main():
         
         print("\n3. \033[93m[START]\033[0m    CHẠY FACE SWAP (Webcam Real-time)")
         print("   (Chế độ màn hình đôi: Thật vs Fake)")
+
+        print("-" * 30)
+        
+        print("4. \033[95m[VIDEO]\033[0m   Trích xuất ảnh từ Video (Youtube Interview)")
+        print("   (Ném file .mp4 vào folder video_data -> Tự tạo Dataset)")
         
         print("\n0. \033[90mThoát\033[0m")
         
@@ -56,6 +61,8 @@ def main():
             run_script('02_create_embeddings.py')
         elif choice == '3':
             run_script('03_run_webcam.py')
+        elif choice == '4':
+            run_script('04_video_to_dataset.py')
         elif choice == '0':
             print("\nCút!")
             break

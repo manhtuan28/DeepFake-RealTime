@@ -7,7 +7,7 @@ from insightface.utils import face_align
 
 INPUT_DIR = "raw_data"
 OUTPUT_DIR = "dataset"
-MIN_FACE_SIZE = 120
+MIN_FACE_SIZE = 100
 OUTPUT_SIZE = 512
 
 app = FaceAnalysis(allowed_modules=['detection'], providers=['CPUExecutionProvider']) 
@@ -19,8 +19,7 @@ def process_image(img_path, save_folder, count_start):
 
     try:
         faces = app.get(img)
-    except Exception as e:
-        print(f"    ! Loi doc khuon mat: {e}")
+    except Exception:
         return count_start
 
     if len(faces) == 0: return count_start
@@ -30,7 +29,7 @@ def process_image(img_path, save_folder, count_start):
     if len(faces) > 0:
         face = faces[0]
         bbox = face.bbox
-        if (bbox[2] - bbox[0]) < MIN_FACE_SIZE or (bbox[3] - bbox[1]) < MIN_FACE_SIZE:
+        if (bbox[2] - bbox[0]) < MIN_FACE_SIZE:
             return count_start
 
         norm_crop_img = face_align.norm_crop(img, landmark=face.kps, image_size=OUTPUT_SIZE)
@@ -46,28 +45,30 @@ def process_image(img_path, save_folder, count_start):
 
 def main():
     if not os.path.exists(INPUT_DIR):
-        print(f"Chưa có thư mục {INPUT_DIR}!")
+        print(f"Chua co thu muc {INPUT_DIR}!")
         return
 
     sub_folders = [f.path for f in os.scandir(INPUT_DIR) if f.is_dir()]
-
-    print(f"Tìm thấy {len(sub_folders)} thư mục nguồn.")
 
     for folder in sub_folders:
         person_name = os.path.basename(folder)
         target_folder = os.path.join(OUTPUT_DIR, person_name)
 
         if os.path.exists(target_folder) and len(os.listdir(target_folder)) > 0:
-            print(f"\n[>>>] BO QUA: {person_name} (Dataset da ton tai)")
+            print(f"\n[SKIP] {person_name} (Da co data)")
             continue
 
-        print(f"\n--- Dang xu ly NEW: {person_name} ---")
+        print(f"\n--- Dang xu ly: {person_name} ---")
         os.makedirs(target_folder, exist_ok=True)
 
-        types = ('*.jpg', '*.jpeg', '*.png', '*.bmp')
+        types = ('*.jpg', '*.jpeg', '*.png', '*.bmp', '*.webp')
         files_grabbed = []
         for files in types:
             files_grabbed.extend(glob.glob(os.path.join(folder, files)))
+
+        if len(files_grabbed) == 0:
+            print("   ! Khong tim thay anh nao (Check lai duoi file)")
+            continue
 
         count = 1
         for img_file in files_grabbed:

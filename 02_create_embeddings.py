@@ -15,13 +15,15 @@ handler = app.models['recognition']
 def create_embedding(person_name, person_folder):
     save_path = os.path.join(OUTPUT_DIR, f"{person_name}.npy")
     if os.path.exists(save_path):
-        print(f"  [>>>] BO QUA: {person_name} (File .npy da ton tai)")
+        print(f"  [SKIP] {person_name} (Da co vector)")
         return
 
-    print(f"\nDang vector hoa NEW: {person_name}...")
+    print(f"\nDang vector hoa: {person_name}...")
     
     embeddings = []
-    image_files = [f for f in os.listdir(person_folder) if f.endswith(('.jpg', '.png'))]
+    
+    image_files = [f for f in os.listdir(person_folder) 
+                   if f.lower().endswith(('.jpg', '.png', '.jpeg', '.webp'))]
     
     for img_file in image_files:
         img_path = os.path.join(person_folder, img_file)
@@ -37,31 +39,26 @@ def create_embedding(person_name, person_folder):
             pass
 
     if len(embeddings) == 0:
-        print("  [Loi] Khong rut trich duoc vector!")
+        print("  [Loi] Khong rut trich duoc vector (Folder rong hoac anh loi)!")
         return
 
     mean_embedding = np.mean(embeddings, axis=0)
     mean_embedding = mean_embedding / np.linalg.norm(mean_embedding)
 
     np.save(save_path, mean_embedding)
-    print(f"  [OK] Da tao moi: {save_path}")
+    print(f"  [OK] Da luu vector: {save_path}")
 
 def main():
-    if not os.path.exists(OUTPUT_DIR):
-        os.makedirs(OUTPUT_DIR)
-    
+    if not os.path.exists(OUTPUT_DIR): os.makedirs(OUTPUT_DIR)
     if not os.path.exists(DATASET_DIR):
         print("Khong tim thay folder dataset!")
         return
 
     sub_folders = [f.path for f in os.scandir(DATASET_DIR) if f.is_dir()]
-    
-    print(f"Quet thay {len(sub_folders)} doi tuong trong dataset.")
-    
     for folder in sub_folders:
         create_embedding(os.path.basename(folder), folder)
 
-    print("\n=== HOAN TAT TAO EMBEDDINGS ===")
+    print("\n=== HOAN TAT ===")
 
 if __name__ == "__main__":
     main()

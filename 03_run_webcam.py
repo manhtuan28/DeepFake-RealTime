@@ -11,6 +11,10 @@ CONFIDENCE_THRESHOLD = 0.5
 FRAME_WIDTH = 640
 FRAME_HEIGHT = 480
 
+COLOR_CYAN = (255, 255, 0)
+COLOR_WHITE = (255, 255, 255)
+COLOR_BG_TXT = (0, 0, 0)
+
 if not os.path.exists(MODEL_PATH):
     print("ERROR: Khong tim thay file model inswapper_128.onnx")
     exit()
@@ -41,6 +45,12 @@ def sharpen_image(image):
     kernel = np.array([[0, -1, 0], [-1, 5,-1], [0, -1, 0]])
     return cv2.filter2D(image, -1, kernel)
 
+def draw_ui_text(img, text, pos, color, scale=0.7, thickness=2):
+    x, y = pos
+    (w, h), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, scale, thickness)
+    cv2.rectangle(img, (x - 5, y - h - 10), (x + w + 5, y + 5), COLOR_BG_TXT, -1)
+    cv2.putText(img, text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, scale, color, thickness)
+
 cap = cv2.VideoCapture(0)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_WIDTH)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
@@ -69,20 +79,28 @@ while True:
 
     combined_window = np.hstack((frame, fake_frame))
 
-    cv2.line(combined_window, (FRAME_WIDTH, 0), (FRAME_WIDTH, FRAME_HEIGHT), (0, 255, 0), 2)
+    cv2.line(combined_window, (FRAME_WIDTH, 0), (FRAME_WIDTH, FRAME_HEIGHT), (200, 200, 200), 2)
 
-    cv2.putText(combined_window, "ORIGINA", (30, 50), 
-                cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+    draw_ui_text(combined_window, "REAL CAMERA", (20, 40), COLOR_WHITE)
 
-    cv2.putText(combined_window, f"FAKE: {current_name.upper()}", (FRAME_WIDTH + 30, 50), 
-                cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+    display_name = current_name.replace("_", " ").upper()
+    draw_ui_text(combined_window, f"AI SWAP: {display_name}", (FRAME_WIDTH + 20, 40), COLOR_CYAN)
 
     fps = 1 / (time.time() - start_time)
-    info_text = f"FPS: {fps:.1f}"
-    cv2.putText(combined_window, info_text, (FRAME_WIDTH - 200, FRAME_HEIGHT - 20), 
-                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 1)
+    
+    overlay = combined_window.copy()
+    cv2.rectangle(overlay, (0, FRAME_HEIGHT - 40), (FRAME_WIDTH * 2, FRAME_HEIGHT), (0, 0, 0), -1)
+    cv2.addWeighted(overlay, 0.6, combined_window, 0.4, 0, combined_window)
 
-    cv2.imshow('Deep Fake: Real-Time', combined_window)
+    cv2.putText(combined_window, f"FPS: {fps:.1f}", (20, FRAME_HEIGHT - 12), 
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, COLOR_CYAN, 1)
+
+    help_text = "[N]: Next Person  |  [Q]: Quit"
+    (w_help, _), _ = cv2.getTextSize(help_text, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 1)
+    cv2.putText(combined_window, help_text, ((FRAME_WIDTH * 2) - w_help - 20, FRAME_HEIGHT - 12), 
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, COLOR_WHITE, 1)
+
+    cv2.imshow('Deep Fake: Real-Time UI', combined_window)
 
     key = cv2.waitKey(1) & 0xFF
     if key == ord('q'):

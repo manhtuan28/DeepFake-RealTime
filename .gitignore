@@ -9,6 +9,7 @@ Thumbs.db
 raw_data/
 dataset/
 embeddings/
+video_data/
 
 *.onnx
 *.pth
