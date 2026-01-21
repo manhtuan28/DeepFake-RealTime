@@ -15,9 +15,9 @@ A lightweight, real-time face swapping application built with Python, InsightFac
 - **🚀 Real-time Performance:** Swaps faces directly on webcam feed with low latency.
 - **🔴 AMD Optimization:** Uses `onnxruntime-directml` to leverage AMD Radeon GPUs (which are often unsupported by standard CUDA builds).
 - **💎 HD Mode (Face Enhancement):** Integrated **GPEN-BFR-512** to restore facial details (skin texture, eyes) up to 512px resolution.
+- **🎬 Smart Video Extraction:** Automatically extracts high-quality training images from video files (e.g., YouTube interviews), filtering out blurry frames and unwanted people.
 - **⚡ Incremental Processing:** Smart data pipeline that skips already processed images/embeddings to save time.
 - **🖥️ Split-View UI:** Real-time comparison interface (Original vs. Fake) with FPS counter and active model status.
-- **🎛️ Master Controller:** Centralized `app.py` launcher to manage the entire workflow.
 
 ---
 
@@ -81,12 +81,19 @@ python app.py
         * `N`: Switch to the next face in your embeddings bank.
         * `Q`: Quit the application.
 
+4.  **Option 4: [VIDEO] Extraction (Recommended Source)**
+    * Opens the webcam feed.
+    * **Controls:**
+        * Place .mp4 video files (e.g., 4K interviews, fancams) into video_data/.
+        * (Optional) Place a sample image (e.g., sample.jpg) of the target person in the same folder to activate Smart Filter (removes interviewers/audience automatically).
+        * The script extracts clean, sharp faces into dataset/.
 ---
 
 ## 📂 Project Structure
 
 ```text
-├── raw_data/           # Put your raw images/videos here
+├── video_data/         # Put MP4 videos here for extraction
+├── raw_data/           # Put raw images here (Alternative source)
 ├── dataset/            # Processed 512x512 aligned faces
 ├── embeddings/         # Extracted feature vectors (.npy)
 ├── inswapper_128.onnx  # [Required] Swap Model
@@ -95,6 +102,7 @@ python app.py
 ├── 01_data_processing.py
 ├── 02_create_embeddings.py
 ├── 03_run_webcam.py
+├── 04_video_to_dataset.py
 ├── requirements.txt
 └── README.md
 ```
@@ -112,7 +120,7 @@ python app.py
 
 **Low FPS in HD Mode**
 * **Cause:** GPEN Enhancer is computationally expensive.
-* **Fix:** In `03_run_webcam.py`, verify `PROCESS_WIDTH` is set to `640` or lower. If you don't need HD details, rename/remove `GPEN-BFR-512.onnx` to switch back to SD mode (High FPS).
+* **Fix:** In `03_run_webcam.py`, verify `PROCESS_WIDTH` is set to `640` or lower. If you don't need HD details, rename/remove `GPEN-BFR-512.onnx` to switch back to SD mode (High FPS) - (DELETE).
 
 ---
 
