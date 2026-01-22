@@ -47,8 +47,11 @@ def main():
 
         print("-" * 30)
         
-        print("4. \033[95m[VIDEO]\033[0m   Trích xuất ảnh từ Video (Youtube Interview)")
+        print("\n4. \033[95m[VIDEO]\033[0m   Trích xuất ảnh từ Video (Youtube Interview)")
         print("   (Ném file .mp4 vào folder video_data -> Tự tạo Dataset)")
+
+        print("\n5. \033[91m[RENDER]\033[0m  Swap mặt vào Video có sẵn (Chất lượng cao)")
+        print("   (Đặt file video là input_video.mp4)")
         
         print("\n0. \033[90mThoát\033[0m")
         
@@ -63,6 +66,8 @@ def main():
             run_script('03_run_webcam.py')
         elif choice == '4':
             run_script('04_video_to_dataset.py')
+        elif choice == '5':
+            run_script('05_run_video_file.py')
         elif choice == '0':
             print("\nCút!")
             break
