@@ -84,7 +84,7 @@ while True:
     draw_ui_text(combined_window, "REAL CAMERA", (20, 40), COLOR_WHITE)
 
     display_name = current_name.replace("_", " ").upper()
-    draw_ui_text(combined_window, f"AI SWAP: {display_name}", (FRAME_WIDTH + 20, 40), COLOR_CYAN)
+    # draw_ui_text(combined_window, f"AI SWAP: {display_name}", (FRAME_WIDTH + 20, 40), COLOR_CYAN)
 
     fps = 1 / (time.time() - start_time)
     
