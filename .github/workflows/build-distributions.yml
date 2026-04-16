@@ -82,7 +82,6 @@ jobs:
            Real-time face swap and whole-head synthesis utility.
           EOF
           dpkg-deb --build "${PKG_DIR}"
-          mv "${PKG_DIR}.deb" deepfake-rt_0.1.0_amd64.deb
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
