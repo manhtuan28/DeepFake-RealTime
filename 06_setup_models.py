@@ -41,31 +41,31 @@ I18N = {
         "no": "no",
     },
     "vi": {
-        "header": "CAI DAT MODEL TU DONG",
-        "profile": "Thong tin cau hinh may",
-        "os": "He dieu hanh",
-        "cpu": "So nhan CPU",
+        "header": "CÀI ĐẶT MODEL TỰ ĐỘNG",
+        "profile": "Thông tin cấu hình máy",
+        "os": "Hệ điều hành",
+        "cpu": "Số nhân CPU",
         "ram": "RAM",
-        "disk": "Dung luong trong cho models",
+        "disk": "Dung lượng trong cho models",
         "gpu": "NVIDIA GPU",
         "vram": "VRAM NVIDIA",
         "providers": "ONNX providers",
-        "recommended": "Goi model de xuat",
-        "reasons": "Ly do chon goi",
-        "catalog_saved": "Da luu thong tin model",
-        "selected_models": "Danh sach model se kiem tra/tai",
-        "starting": "Bat dau",
-        "skip": "Da co",
-        "warn_missing_url": "Chua co URL de tai",
-        "warn_set_env": "Dat DEEPFAKE_LIVEPORTRAIT_BASE_URL de tu dong tai bo LivePortrait.",
-        "download": "Dang tai",
-        "downloaded": "Da tai xong",
-        "completed_warn": "Hoan tat co canh bao. Model con thieu",
-        "completed_ok": "Tat ca model can thiet cho may nay da san sang.",
-        "prompt_override": "Dung goi de xuat? [Enter=co, w=yeu, b=trung binh, s=manh]: ",
-        "tier_changed": "Da dung goi do ban chon",
-        "yes": "co",
-        "no": "khong",
+        "recommended": "Gói model đề xuất",
+        "reasons": "Lý do chọn gói",
+        "catalog_saved": "Đã lưu thông tin model",
+        "selected_models": "Danh sách model sẽ kiểm tra/tải",
+        "starting": "Bắt đầu",
+        "skip": "Đã có",
+        "warn_missing_url": "Chưa có URL để tải",
+        "warn_set_env": "Đặt DEEPFAKE_LIVEPORTRAIT_BASE_URL để tự động tải bộ LivePortrait.",
+        "download": "Đang tải",
+        "downloaded": "Đã tải xong",
+        "completed_warn": "Hoàn tất có cảnh báo. Model còn thiếu",
+        "completed_ok": "Tất cả model cần thiết cho máy này đã sẵn sàng.",
+        "prompt_override": "Dùng gói đề xuất? [Enter=có, w=yếu, b=trung bình, s=mạnh]: ",
+        "tier_changed": "Đã dùng gói do bạn chọn",
+        "yes": "có",
+        "no": "không",
     },
 }
 
@@ -116,6 +116,42 @@ def get_nvidia_vram_gb() -> float:
         return 0.0
 
 
+def has_amd_gpu() -> bool:
+    """Check if AMD GPU (ROCm) is available."""
+    if shutil.which("rocm-smi") is not None:
+        return True
+    if os.getenv("ROCM_HOME") or os.path.exists("/opt/rocm"):
+        return True
+    return False
+
+
+def get_amd_vram_gb() -> float:
+    """Get AMD GPU VRAM in GB."""
+    if not has_amd_gpu():
+        return 0.0
+    try:
+        out = subprocess.check_output(
+            ["rocm-smi", "--showmeminfo", "all"],
+            text=True,
+            stderr=subprocess.DEVNULL,
+        )
+        # Parse rocm-smi output for total memory
+        for line in out.splitlines():
+            if "Total Memory" in line or "total memory" in line.lower():
+                # Extract number in MB
+                parts = line.split()
+                for i, part in enumerate(parts):
+                    try:
+                        mb = float(part.replace(",", ""))
+                        if 1000 < mb < 1000000:  # Sanity check: between 1GB and 1TB
+                            return round(mb / 1024.0, 1)
+                    except ValueError:
+                        continue
+    except Exception:
+        pass
+    return 0.0
+
+
 def get_free_disk_gb(path: str = MODEL_DIR) -> float:
     os.makedirs(path, exist_ok=True)
     free = shutil.disk_usage(path).free
@@ -136,6 +172,8 @@ def classify_machine() -> Tuple[str, Dict[str, object], List[str]]:
     ram_gb = get_total_ram_gb()
     nvidia = has_nvidia_gpu()
     vram_gb = get_nvidia_vram_gb()
+    amd = has_amd_gpu()
+    amd_vram_gb = get_amd_vram_gb()
     disk_gb = get_free_disk_gb()
     providers = get_onnx_providers()
 
@@ -166,12 +204,23 @@ def classify_machine() -> Tuple[str, Dict[str, object], List[str]]:
         score += 2
         reasons.append("NVIDIA GPU detected")
 
+    if amd:
+        score += 2
+        reasons.append("AMD GPU (ROCm) detected")
+
     if vram_gb >= 10:
         score += 2
         reasons.append("high GPU VRAM")
     elif vram_gb >= 6:
         score += 1
         reasons.append("usable GPU VRAM")
+
+    if amd_vram_gb >= 10:
+        score += 2
+        reasons.append("high AMD GPU VRAM")
+    elif amd_vram_gb >= 6:
+        score += 1
+        reasons.append("usable AMD GPU VRAM")
 
     if disk_gb < 8:
         score -= 2
@@ -194,6 +243,8 @@ def classify_machine() -> Tuple[str, Dict[str, object], List[str]]:
         "ram_gb": round(ram_gb, 1),
         "nvidia_gpu": nvidia,
         "nvidia_vram_gb": vram_gb,
+        "amd_gpu": amd,
+        "amd_vram_gb": amd_vram_gb,
         "disk_free_gb": disk_gb,
         "onnx_providers": providers,
         "score": score,
