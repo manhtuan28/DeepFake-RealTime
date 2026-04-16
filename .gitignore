@@ -12,6 +12,7 @@ embeddings/
 video_data/
 
 *.onnx
+models/model_catalog.json
 *.pth
 *.t7
 *.mp4
