@@ -1,16 +1,15 @@
 import os
 import cv2
 import glob
-import insightface
-from insightface.app import FaceAnalysis
 from insightface.utils import face_align
+from runtime_utils import create_face_analysis
 
 INPUT_DIR = "raw_data"
 OUTPUT_DIR = "dataset"
 MIN_FACE_SIZE = 100
 OUTPUT_SIZE = 512
 
-app = FaceAnalysis(allowed_modules=['detection'], providers=['CPUExecutionProvider']) 
+app = create_face_analysis(model_name='buffalo_l', allowed_modules=['detection'])
 app.prepare(ctx_id=0, det_size=(640, 640))
 
 def process_image(img_path, save_folder, count_start):

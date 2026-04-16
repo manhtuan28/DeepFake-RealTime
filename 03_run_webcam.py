@@ -3,9 +3,10 @@ import insightface
 import numpy as np
 import os
 import time
+from runtime_utils import create_face_analysis, get_onnxruntime_providers, open_video_capture
 
 EMBEDDINGS_DIR = "embeddings"
-MODEL_PATH = "inswapper_128.onnx"
+MODEL_PATH = os.path.join("models", "inswapper_128.onnx")
 CONFIDENCE_THRESHOLD = 0.5
 
 FRAME_WIDTH = 640
@@ -16,7 +17,7 @@ COLOR_WHITE = (255, 255, 255)
 COLOR_BG_TXT = (0, 0, 0)
 
 if not os.path.exists(MODEL_PATH):
-    print("ERROR: Khong tim thay file model inswapper_128.onnx")
+    print("ERROR: Khong tim thay file model models/inswapper_128.onnx")
     exit()
 
 print(">>> Dang khoi tao he thong Split View...")
@@ -37,9 +38,12 @@ for idx, f in enumerate(files):
 
 current_face_idx = 0
 
-app = insightface.app.FaceAnalysis(name='buffalo_s', providers=['DmlExecutionProvider'])
+providers = get_onnxruntime_providers()
+print(f">>> Selected providers: {', '.join(providers)}")
+
+app = create_face_analysis(model_name='buffalo_s')
 app.prepare(ctx_id=0, det_size=(640, 640))
-swapper = insightface.model_zoo.get_model(MODEL_PATH, providers=['DmlExecutionProvider'])
+swapper = insightface.model_zoo.get_model(MODEL_PATH, providers=providers)
 
 def sharpen_image(image):
     kernel = np.array([[0, -1, 0], [-1, 5,-1], [0, -1, 0]])
@@ -51,7 +55,7 @@ def draw_ui_text(img, text, pos, color, scale=0.7, thickness=2):
     cv2.rectangle(img, (x - 5, y - h - 10), (x + w + 5, y + 5), COLOR_BG_TXT, -1)
     cv2.putText(img, text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, scale, color, thickness)
 
-cap = cv2.VideoCapture(0)
+cap = open_video_capture(0)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_WIDTH)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
 
@@ -82,9 +86,6 @@ while True:
     cv2.line(combined_window, (FRAME_WIDTH, 0), (FRAME_WIDTH, FRAME_HEIGHT), (200, 200, 200), 2)
 
     draw_ui_text(combined_window, "REAL CAMERA", (20, 40), COLOR_WHITE)
-
-    display_name = current_name.replace("_", " ").upper()
-    # draw_ui_text(combined_window, f"AI SWAP: {display_name}", (FRAME_WIDTH + 20, 40), COLOR_CYAN)
 
     fps = 1 / (time.time() - start_time)
     

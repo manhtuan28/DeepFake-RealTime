@@ -2,11 +2,10 @@ import cv2
 import insightface
 import numpy as np
 import os
-import sys
+from runtime_utils import create_face_analysis, get_onnxruntime_providers
 
 EMBEDDINGS_DIR = "embeddings"
-MODEL_SWAP_PATH = "inswapper_128.onnx"
-MODEL_ENHANCE_PATH = "GPEN-BFR-512.onnx"
+MODEL_SWAP_PATH = os.path.join("models", "inswapper_128.onnx")
 
 def select_file_from_list(file_list, prompt_text):
     if not file_list:
@@ -64,9 +63,9 @@ def main():
     target_embedding = np.load(os.path.join(EMBEDDINGS_DIR, target_file))
     source_face = insightface.app.common.Face(embedding=target_embedding)
 
-    print("\n>>> Đang khởi động AI Models (Classic)...")
-    providers = ['DmlExecutionProvider']
-    app = insightface.app.FaceAnalysis(name='buffalo_l', providers=providers)
+    providers = get_onnxruntime_providers()
+    print(f"\n>>> Đang khởi động AI Models (Classic) | Providers: {', '.join(providers)}")
+    app = create_face_analysis(model_name='buffalo_l')
     app.prepare(ctx_id=0, det_size=(640, 640))
     swapper = insightface.model_zoo.get_model(MODEL_SWAP_PATH, providers=providers)
     

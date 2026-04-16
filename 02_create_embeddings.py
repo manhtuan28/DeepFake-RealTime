@@ -1,14 +1,13 @@
 import os
 import cv2
 import numpy as np
-import insightface
-from insightface.app import FaceAnalysis
+from runtime_utils import create_face_analysis
 
 DATASET_DIR = "dataset"
 OUTPUT_DIR = "embeddings"
 
-print("Dang khoi tao model (AMD DirectML)...")
-app = FaceAnalysis(name='buffalo_l', providers=['DmlExecutionProvider'])
+print("Dang khoi tao model (auto backend)...")
+app = create_face_analysis(model_name='buffalo_l')
 app.prepare(ctx_id=0, det_size=(640, 640))
 handler = app.models['recognition']
 

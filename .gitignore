@@ -14,7 +14,7 @@ video_data/
 *.onnx
 *.pth
 *.t7
-*,mp4
+*.mp4
 
 venv/
 env/

@@ -9,7 +9,7 @@ def clear_screen():
 def print_header():
     print("\033[92m" + "="*50)
     print("      AI FACE SWAP SYSTEM - CONTROL CENTER")
-    print("      (AMD DirectML Optimized Edition)")
+    print("      (Auto backend: CUDA / DirectML / CPU)")
     print("="*50 + "\033[0m")
 
 def run_script(script_name):
@@ -52,11 +52,14 @@ def main():
 
         print("\n5. \033[91m[RENDER]\033[0m  Swap mặt vào Video có sẵn (Chất lượng cao)")
         print("   (Đặt file video là input_video.mp4)")
+
+        print("\n6. \033[94m[HEAD]\033[0m    Fake toàn bộ đầu bằng LivePortrait")
+        print("   (Chế độ chậm hơn nhưng phủ cả đầu, không chỉ mặt)")
         
         print("\n0. \033[90mThoát\033[0m")
         
         print("-" * 50)
-        choice = input("Nhập lựa chọn (0-3): ").strip()
+        choice = input("Nhập lựa chọn (0-6): ").strip()
 
         if choice == '1':
             run_script('01_data_processing.py')
@@ -68,6 +71,8 @@ def main():
             run_script('04_video_to_dataset.py')
         elif choice == '5':
             run_script('05_run_video_file.py')
+        elif choice == '6':
+            run_script('07_head_stitcher.py')
         elif choice == '0':
             print("\nCút!")
             break
