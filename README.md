@@ -140,20 +140,53 @@ Menu options:
 - 6: Whole-head LivePortrait mode
 - 7: Auto model setup by machine tier
 
-### 7. Performance Tips
+### 7. Performance Tips & GPU Selection
 
-For low FPS in whole-head mode:
+**Check Available GPUs:**
+
+```bash
+python check_gpus.py
+```
+
+This shows all NVIDIA and AMD GPUs available on your system.
+
+**Multi-GPU Systems (Intel iGPU + Dedicated GPU):**
+
+The program automatically selects the **most powerful GPU** (highest VRAM) by default. If you have an integrated GPU and dedicated GPU:
+
+Option 1: Auto-select best GPU (recommended)
+```bash
+python app.py  # Will use the dedicated GPU automatically
+```
+
+Option 2: Force a specific GPU by index
+```bash
+DEEPFAKE_GPU_ID=0 python app.py   # Use GPU 0 (usually integrated)
+DEEPFAKE_GPU_ID=1 python app.py   # Use GPU 1 (usually dedicated)
+```
+
+Option 3: Use CUDA native selection (NVIDIA)
+```bash
+CUDA_VISIBLE_DEVICES=0 python app.py
+```
+
+Option 4: Use ROCm native selection (AMD)
+```bash
+HIP_VISIBLE_DEVICES=0 python app.py
+```
+
+**For Low FPS in Whole-Head Mode:**
 - Increase `DEEPFAKE_HEAD_FRAME_SKIP` (higher = faster, less smooth)
 - Reduce `DEEPFAKE_HEAD_DRIVING_SIZE`
 - Keep enhancer model optional for real-time workflows
 
-Force CPU-only mode:
+**Force CPU-only mode:**
 
 ```bash
 export DEEPFAKE_DISABLE_GPU=1
 ```
 
-Force custom provider order:
+**Force custom provider order:**
 
 ```bash
 export DEEPFAKE_ORT_PROVIDERS=CUDAExecutionProvider,CPUExecutionProvider
@@ -340,9 +373,42 @@ python app.py
 - 6: Fake toàn bộ đầu bằng LivePortrait
 - 7: Tự động cài model theo cấu hình máy
 
-### 7. Tối Ưu Hiệu Năng
+### 7. Tối Ưu Hiệu Năng & Chọn GPU
 
-Nếu FPS thấp trong chế độ fake đầu:
+**Kiểm Tra GPU Khả Dụng:**
+
+```bash
+python check_gpus.py
+```
+
+Công cụ này hiển thị tất cả GPU NVIDIA và AMD trên máy của bạn.
+
+**Hệ Thống Có Hai GPU (Intel iGPU + GPU Chuyên Dụng):**
+
+Chương trình tự động chọn **GPU mạnh nhất** (VRAM cao nhất). Nếu bạn có GPU tích hợp và GPU chuyên dụng:
+
+Cách 1: Tự động chọn GPU tốt nhất (khuyến nghị)
+```bash
+python app.py  # Sẽ tự động dùng GPU chuyên dụng
+```
+
+Cách 2: Ép chọn GPU cụ thể theo chỉ số
+```bash
+DEEPFAKE_GPU_ID=0 python app.py   # Dùng GPU 0 (thường là tích hợp)
+DEEPFAKE_GPU_ID=1 python app.py   # Dùng GPU 1 (thường là chuyên dụng)
+```
+
+Cách 3: Dùng chọn lọc CUDA gốc (NVIDIA)
+```bash
+CUDA_VISIBLE_DEVICES=0 python app.py
+```
+
+Cách 4: Dùng chọn lọc ROCm gốc (AMD)
+```bash
+HIP_VISIBLE_DEVICES=0 python app.py
+```
+
+**Nếu FPS Thấp Trong Chế Độ Fake Đầu:**
 - Tăng `DEEPFAKE_HEAD_FRAME_SKIP` (cao hơn thì nhanh hơn, giảm độ mượt)
 - Giảm `DEEPFAKE_HEAD_DRIVING_SIZE`
 - Không bật enhancer nếu ưu tiên tốc độ

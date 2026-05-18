@@ -2,10 +2,11 @@ import json
 import os
 import platform
 import shutil
-import subprocess
 import urllib.request
 from dataclasses import asdict, dataclass
 from typing import Dict, List, Optional, Tuple
+
+from runtime_utils import get_gpu_summary
 
 
 MODEL_DIR = "models"
@@ -95,133 +96,78 @@ def get_total_ram_gb() -> float:
     return 0.0
 
 
-def has_nvidia_gpu() -> bool:
-    return shutil.which("nvidia-smi") is not None
-
-
-def get_nvidia_vram_gb() -> float:
-    if not has_nvidia_gpu():
-        return 0.0
-    try:
-        out = subprocess.check_output(
-            ["nvidia-smi", "--query-gpu=memory.total", "--format=csv,noheader,nounits"],
-            text=True,
-            stderr=subprocess.DEVNULL,
-        )
-        values = [float(line.strip()) for line in out.splitlines() if line.strip()]
-        if not values:
-            return 0.0
-        return round(max(values) / 1024.0, 1)
-    except Exception:
-        return 0.0
-
-
-def has_amd_gpu() -> bool:
-    """Check if AMD GPU (ROCm) is available."""
-    if shutil.which("rocm-smi") is not None:
-        return True
-    if os.getenv("ROCM_HOME") or os.path.exists("/opt/rocm"):
-        return True
-    return False
-
-
-def get_amd_vram_gb() -> float:
-    """Get AMD GPU VRAM in GB."""
-    if not has_amd_gpu():
-        return 0.0
-    try:
-        out = subprocess.check_output(
-            ["rocm-smi", "--showmeminfo", "all"],
-            text=True,
-            stderr=subprocess.DEVNULL,
-        )
-        # Parse rocm-smi output for total memory
-        for line in out.splitlines():
-            if "Total Memory" in line or "total memory" in line.lower():
-                # Extract number in MB
-                parts = line.split()
-                for i, part in enumerate(parts):
-                    try:
-                        mb = float(part.replace(",", ""))
-                        if 1000 < mb < 1000000:  # Sanity check: between 1GB and 1TB
-                            return round(mb / 1024.0, 1)
-                    except ValueError:
-                        continue
-    except Exception:
-        pass
-    return 0.0
-
-
 def get_free_disk_gb(path: str = MODEL_DIR) -> float:
     os.makedirs(path, exist_ok=True)
     free = shutil.disk_usage(path).free
     return round(free / (1024 ** 3), 1)
 
 
-def get_onnx_providers() -> List[str]:
-    try:
-        import onnxruntime as ort
-
-        return ort.get_available_providers()
-    except Exception:
-        return []
-
-
 def classify_machine() -> Tuple[str, Dict[str, object], List[str]]:
+    """Classify machine using centralized GPU detection from runtime_utils."""
+    summary = get_gpu_summary()
+
     cpu_cores = os.cpu_count() or 1
     ram_gb = get_total_ram_gb()
-    nvidia = has_nvidia_gpu()
-    vram_gb = get_nvidia_vram_gb()
-    amd = has_amd_gpu()
-    amd_vram_gb = get_amd_vram_gb()
     disk_gb = get_free_disk_gb()
-    providers = get_onnx_providers()
+
+    # GPU info from centralized detection
+    has_nvidia = bool(summary.nvidia_gpus)
+    has_amd = bool(summary.amd_gpus)
+    nvidia_vram_gb = max((g.total_vram_gb for g in summary.nvidia_gpus), default=0.0)
+    amd_vram_gb = max((g.total_vram_gb for g in summary.amd_gpus), default=0.0)
+    nvidia_name = summary.nvidia_gpus[0].name if summary.nvidia_gpus else ""
+    amd_name = summary.amd_gpus[0].name if summary.amd_gpus else ""
+    providers = summary.onnx_providers_available
 
     score = 0
     reasons = []
 
+    # CPU scoring
     if cpu_cores >= 12:
         score += 3
-        reasons.append("high CPU core count")
+        reasons.append(f"high CPU core count ({cpu_cores})")
     elif cpu_cores >= 8:
         score += 2
-        reasons.append("good CPU core count")
+        reasons.append(f"good CPU core count ({cpu_cores})")
     elif cpu_cores >= 4:
         score += 1
-        reasons.append("baseline CPU core count")
+        reasons.append(f"baseline CPU core count ({cpu_cores})")
 
+    # RAM scoring
     if ram_gb >= 24:
         score += 3
-        reasons.append("high RAM")
+        reasons.append(f"high RAM ({ram_gb:.0f} GB)")
     elif ram_gb >= 16:
         score += 2
-        reasons.append("good RAM")
+        reasons.append(f"good RAM ({ram_gb:.0f} GB)")
     elif ram_gb >= 8:
         score += 1
-        reasons.append("minimum recommended RAM")
+        reasons.append(f"minimum recommended RAM ({ram_gb:.0f} GB)")
 
-    if nvidia:
+    # GPU detection scoring (don't double-count if both NVIDIA and AMD)
+    if has_nvidia:
         score += 2
-        reasons.append("NVIDIA GPU detected")
+        reasons.append(f"NVIDIA GPU ({nvidia_name})")
+    elif has_amd:
+        score += 2
+        reasons.append(f"AMD GPU ({amd_name})")
+    elif summary.apple_silicon:
+        score += 2
+        reasons.append("Apple Silicon (CoreML)")
 
-    if amd:
+    # VRAM scoring — use the BEST GPU, not sum of all
+    best_vram = max(nvidia_vram_gb, amd_vram_gb)
+    if best_vram >= 10:
+        score += 3
+        reasons.append(f"high GPU VRAM ({best_vram:.0f} GB)")
+    elif best_vram >= 6:
         score += 2
-        reasons.append("AMD GPU (ROCm) detected")
-
-    if vram_gb >= 10:
-        score += 2
-        reasons.append("high GPU VRAM")
-    elif vram_gb >= 6:
+        reasons.append(f"usable GPU VRAM ({best_vram:.0f} GB)")
+    elif best_vram >= 2:
         score += 1
-        reasons.append("usable GPU VRAM")
+        reasons.append(f"low GPU VRAM ({best_vram:.0f} GB)")
 
-    if amd_vram_gb >= 10:
-        score += 2
-        reasons.append("high AMD GPU VRAM")
-    elif amd_vram_gb >= 6:
-        score += 1
-        reasons.append("usable AMD GPU VRAM")
-
+    # Disk scoring
     if disk_gb < 8:
         score -= 2
         reasons.append("very low free disk")
@@ -229,11 +175,12 @@ def classify_machine() -> Tuple[str, Dict[str, object], List[str]]:
         score -= 1
         reasons.append("limited free disk")
     else:
-        reasons.append("enough free disk")
+        reasons.append(f"enough free disk ({disk_gb:.0f} GB)")
 
-    if score >= 7:
+    # Tier classification
+    if score >= 8:
         tier = "strong"
-    elif score >= 3:
+    elif score >= 4:
         tier = "balanced"
     else:
         tier = "weak"
@@ -241,10 +188,13 @@ def classify_machine() -> Tuple[str, Dict[str, object], List[str]]:
     profile = {
         "cpu_cores": cpu_cores,
         "ram_gb": round(ram_gb, 1),
-        "nvidia_gpu": nvidia,
-        "nvidia_vram_gb": vram_gb,
-        "amd_gpu": amd,
+        "nvidia_gpu": has_nvidia,
+        "nvidia_gpu_name": nvidia_name,
+        "nvidia_vram_gb": nvidia_vram_gb,
+        "amd_gpu": has_amd,
+        "amd_gpu_name": amd_name,
         "amd_vram_gb": amd_vram_gb,
+        "apple_silicon": summary.apple_silicon,
         "disk_free_gb": disk_gb,
         "onnx_providers": providers,
         "score": score,
@@ -369,10 +319,12 @@ def run_setup() -> int:
     print(f"- {tr(lang, 'cpu')}: {profile['cpu_cores']}")
     print(f"- {tr(lang, 'ram')}: {profile['ram_gb']} GB")
     print(f"- {tr(lang, 'disk')}: {profile['disk_free_gb']} GB")
-    print(f"- {tr(lang, 'gpu')}: {tr(lang, 'yes') if profile['nvidia_gpu'] else tr(lang, 'no')}")
-    print(f"- {tr(lang, 'vram')}: {profile['nvidia_vram_gb']} GB")
+    gpu_label = profile.get('nvidia_gpu_name') or profile.get('amd_gpu_name') or ("Apple Silicon" if profile.get('apple_silicon') else tr(lang, 'no'))
+    print(f"- {tr(lang, 'gpu')}: {gpu_label}")
+    best_vram = max(profile.get('nvidia_vram_gb', 0), profile.get('amd_vram_gb', 0))
+    print(f"- {tr(lang, 'vram')}: {best_vram} GB")
     print(f"- {tr(lang, 'providers')}: {', '.join(profile['onnx_providers']) if profile['onnx_providers'] else 'n/a'}")
-    print(f"- {tr(lang, 'recommended')}: {tier}")
+    print(f"- {tr(lang, 'recommended')}: {tier} (score: {profile.get('score', '?')})")
     print(f"- {tr(lang, 'reasons')}: {', '.join(reasons)}")
     print(f"- {tr(lang, 'catalog_saved')}: {catalog_path}")
     print(f"\n{tr(lang, 'selected_models')}:")

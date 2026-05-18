@@ -3,7 +3,7 @@ import insightface
 import numpy as np
 import os
 import time
-from runtime_utils import create_face_analysis, get_onnxruntime_providers, open_video_capture
+from runtime_utils import create_face_analysis, get_gpu_summary, get_onnxruntime_providers, open_video_capture
 
 EMBEDDINGS_DIR = "embeddings"
 MODEL_PATH = os.path.join("models", "inswapper_128.onnx")
@@ -38,8 +38,11 @@ for idx, f in enumerate(files):
 
 current_face_idx = 0
 
-providers = get_onnxruntime_providers()
-print(f">>> Selected providers: {', '.join(providers)}")
+summary = get_gpu_summary()
+providers = summary.onnx_providers_selected
+if summary.selected_gpu:
+    print(f">>> GPU: {summary.selected_gpu.name} (Free: {summary.selected_gpu.free_vram_gb:.1f} GB)")
+print(f">>> Providers: {', '.join(providers)}")
 
 app = create_face_analysis(model_name='buffalo_s')
 app.prepare(ctx_id=0, det_size=(640, 640))

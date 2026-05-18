@@ -2,7 +2,7 @@ import cv2
 import insightface
 import numpy as np
 import os
-from runtime_utils import create_face_analysis, get_onnxruntime_providers
+from runtime_utils import create_face_analysis, get_gpu_summary, get_onnxruntime_providers
 
 EMBEDDINGS_DIR = "embeddings"
 MODEL_SWAP_PATH = os.path.join("models", "inswapper_128.onnx")
@@ -63,8 +63,11 @@ def main():
     target_embedding = np.load(os.path.join(EMBEDDINGS_DIR, target_file))
     source_face = insightface.app.common.Face(embedding=target_embedding)
 
-    providers = get_onnxruntime_providers()
-    print(f"\n>>> Đang khởi động AI Models (Classic) | Providers: {', '.join(providers)}")
+    summary = get_gpu_summary()
+    providers = summary.onnx_providers_selected
+    if summary.selected_gpu:
+        print(f"\n>>> GPU: {summary.selected_gpu.name} (Free: {summary.selected_gpu.free_vram_gb:.1f} GB)")
+    print(f">>> Providers: {', '.join(providers)}")
     app = create_face_analysis(model_name='buffalo_l')
     app.prepare(ctx_id=0, det_size=(640, 640))
     swapper = insightface.model_zoo.get_model(MODEL_SWAP_PATH, providers=providers)

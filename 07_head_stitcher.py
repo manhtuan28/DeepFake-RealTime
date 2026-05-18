@@ -1,20 +1,22 @@
 import cv2
 import numpy as np
 import os
-from runtime_utils import create_onnx_session, get_onnxruntime_providers, open_video_capture
+from runtime_utils import create_onnx_session, get_gpu_summary, get_onnxruntime_providers, open_video_capture
 
 # --- CẤU HÌNH ---
 EMBEDDINGS_DIR = "embeddings"
 RAW_DATA_DIR = "raw_data"
 MODEL_DIR = "models/liveportrait"
 PROVIDERS = get_onnxruntime_providers()
+_summary = get_gpu_summary()
 SOURCE_SIZE = int(os.getenv("DEEPFAKE_HEAD_SOURCE_SIZE", "224"))
 DRIVING_SIZE = int(os.getenv("DEEPFAKE_HEAD_DRIVING_SIZE", "192"))
 FRAME_SKIP = max(1, int(os.getenv("DEEPFAKE_HEAD_FRAME_SKIP", "2")))
 
 class HeadStitcher:
     def __init__(self):
-        print(f">>> Đang khởi tạo bộ não LivePortrait ({', '.join(PROVIDERS)})...")
+        gpu_info = f" | GPU: {_summary.selected_gpu.name}" if _summary.selected_gpu else ""
+        print(f">>> Đang khởi tạo bộ não LivePortrait ({', '.join(PROVIDERS)}{gpu_info})...")
         # Khởi tạo các session ONNX
         self.appearance_feat = create_onnx_session(f"{MODEL_DIR}/appearance_feature_extractor.onnx")
         self.motion_ext = create_onnx_session(f"{MODEL_DIR}/motion_extractor.onnx")
